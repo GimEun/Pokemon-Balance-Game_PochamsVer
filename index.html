@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>포켓몬 밸런스 게임</title>
+<style>
+  :root{
+    --bg:#E2DED0; --frame:#3B6CB2; --navy:#1B2A4A;
+    --gold:#F4B740; --orange:#F28C28; --cream:#FFF9EC;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);font-family:system-ui,-apple-system,sans-serif;color:var(--navy)}
+  .app{max-width:1180px;min-height:90vh;margin:20px auto;padding:22px;border:3px solid var(--frame);border-radius:14px;background:var(--bg);display:flex;flex-direction:column}
+  h1{font-weight:900;margin:0 0 10px}
+  .btn{cursor:pointer;border:2px solid var(--navy);background:var(--cream);color:var(--navy);font-weight:800;padding:10px 18px;border-radius:10px;font-size:15px;margin:4px}
+  .btn:hover{background:#fff}
+  .btn.primary{background:var(--navy);color:#fff}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center}
+  .title-q{font-weight:900;font-size:24px;text-align:center;color:var(--navy);margin:14px 0}
+  .board{display:grid;grid-template-columns:1fr 80px 1fr;gap:14px;align-items:stretch;margin-top:10px}
+  .card{background:var(--navy);color:#fff;border-radius:22px;padding:14px;position:relative;cursor:pointer}
+  .card h2{margin:4px;font-size:20px;color:var(--gold);text-align:center}
+  .mid{display:grid;grid-template-columns:140px 1fr;gap:10px;padding:8px}
+  .mid img{width:140px;height:140px;object-fit:contain;background:#ffffff22;border-radius:14px}
+  .stat{display:grid;grid-template-columns:48px 1fr 30px;gap:6px;align-items:center;font-size:12px}
+  .bar{height:8px;background:#ffffff22;border-radius:6px;overflow:hidden}
+  .bar>i{display:block;height:100%;background:#7fb1ff}
+  .bar.ev>i{background:var(--orange)}
+  .info{padding:6px 12px;font-size:12.5px;line-height:1.5}
+  .info span{color:var(--gold);font-weight:700}
+  .moves{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 12px}
+  .mv{background:#0f1a34;border:1px dashed #ffffff55;border-radius:8px;padding:6px;text-align:center;font-size:12px}
+  .mv.first{border-color:var(--gold);color:var(--gold)}
+  .vs{align-self:center;background:#fff;border:2px dashed var(--navy);border-radius:50%;width:70px;height:70px;display:flex;align-items:center;justify-content:center;font-weight:900;margin:auto}
+  .banner{margin:16px auto;padding:14px;border-radius:14px;text-align:center;font-weight:900;font-size:20px}
+  .banner.ok{background:#e7f6e7;color:#2c7d2c;border:2px solid #2c7d2c}
+  .banner.no{background:#fdecec;color:#a02020;border:2px solid #a02020}
+  .explain{background:var(--cream);border:2px solid var(--navy);border-radius:14px;padding:14px;margin:10px 0;font-size:13px;white-space:pre-wrap;font-family:monospace}
+  .landing{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;text-align:center;padding:40px 20px}
+  .instr{max-width:800px;margin:auto;background:var(--cream);border:2px solid var(--navy);border-radius:14px;padding:22px;line-height:1.75;font-size:14.5px;text-align:left}
+  .instr h3{margin:14px 0 6px;color:var(--navy)}
+  .globalstate{max-width:820px;margin:10px auto 0;background:#fff5df;border:2px dashed var(--orange);border-radius:12px;padding:8px 12px;text-align:center;font-weight:800;color:var(--navy);font-size:13px}
+  @media (max-width: 800px){ .board{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+/* ============================================================
+   DATA & DB
+   ============================================================ */
+const DEX = {
+ "이상해꽃":3,"메가이상해꽃":10033,"리자몽":6,"메가리자몽X":10034,"메가리자몽Y":10035,
+ "거북왕":9,"메가거북왕":10036,"독침붕":15,"메가독침붕":10090,
+ "피죤투":18,"메가피죤투":10073,"아보크":24,"라이츄":26,"픽시":36,"메가픽시":36,
+ "나인테일":38,"라플레시아":45,"윈디":59,"후딘":65,"메가후딘":10038,
+ "괴력몬":68,"우츠보트":71,"야도란":80,"메가야도란":10071,"팬텀":94,"메가팬텀":10037,
+ "캥카":115,"메가캥카":10039,"쁘사이저":127,"메가쁘사이저":10040,"켄타로스":128,"갸라도스":130,"메가갸라도스":10041,
+ "샤미드":134,"쥬피썬더":135,"부스터":136,"프테라":142,"메가프테라":10042,"잠만보":143,"망나뇽":149,
+ "메가니움":154,"블레이범":157,"장크로다일":160,"전룡":181,"메가전룡":10045,"마릴리":184,"왕구리":186,
+ "에브이":196,"야도킹":199,"강철톤":208,"메가강철톤":10072,"핫삼":212,"메가핫삼":10046,
+ "헤라크로스":214,"메가헤라크로스":10047,"헬가":229,"메가헬가":10048,"마기라스":248,"메가마기라스":10049,
+ "나무킹":254,"메가나무킹":10065,"번치코":257,"메가번치코":10050,"대짱이":260,"메가대짱이":10064,
+ "가디안":282,"메가가디안":10051,"보스로라":306,"메가보스로라":10053,"요가램":308,"메가요가램":10054,"썬더볼트":310,"메가썬더볼트":10055,
+ "밀로틱":350,"앱솔":359,"메가앱솔":10057,"메타그로스":376,"메가메타그로스":10076,
+ "토대부기":389,"초염몽":392,"엠페르트":395,"찌르호크":398,"렌트라":405,"로즈레이드":407,
+ "한카리아스":445,"메가한카리아스":10058,"루카리오":448,"메가루카리오":10059,
+ "포푸니라":461,"거대코뿌리":464,"리피아":470,"글레이시아":471,"글라이온":472,"맘모꾸리":473,"엘레이드":475,"메가엘레이드":10068,
+ "샤로다":497,"염무왕":500,"대검귀":503,"몰드류":530,"노보청":534,"악비아르":553,"조로아크":571,"샹델라":609,"삼삼드래":635,"불카모스":637,
+ "개굴닌자":658,"파이어로":663,"킬가르도":681,"님피아":700,"음번":715,"모크나이퍼":724,"어흥염":727,"누리레느":730,"아머까오":823,"드래펄트":887,
+ "마스카나":908,"라우드본":911,"콜로솔트":934,"파라블레이즈":979
+};
+
+const RAW_STATS = `이상해꽃|80|82|83|100|100|80
+메가이상해꽃|80|100|123|122|120|80
+리자몽|78|84|78|109|85|100
+메가리자몽X|78|130|111|130|85|100
+메가리자몽Y|78|104|78|159|115|100
+거북왕|79|83|100|85|105|78
+메가거북왕|79|103|120|135|115|78
+독침붕|65|90|40|45|80|75
+메가독침붕|65|150|40|15|80|145
+피죤투|83|80|75|70|70|101
+메가피죤투|83|80|80|135|80|121
+아보크|60|95|69|65|79|80
+라이츄|60|90|55|90|80|110
+픽시|95|70|73|95|90|60
+나인테일|73|76|75|81|100|100
+라플레시아|75|80|85|110|90|50
+윈디|90|110|80|100|80|95
+후딘|55|50|45|135|95|120
+메가후딘|55|50|65|175|105|150
+괴력몬|90|130|80|65|85|55
+우츠보트|80|105|65|100|70|70
+야도란|95|75|110|100|80|30
+메가야도란|95|75|180|130|80|30
+팬텀|60|65|60|130|75|110
+메가팬텀|60|65|80|170|95|130
+캥카|105|95|80|40|80|90
+메가캥카|105|125|100|60|100|100
+쁘사이저|65|125|100|55|70|85
+메가쁘사이저|65|155|120|65|90|105
+켄타로스|75|100|95|40|70|110
+갸라도스|95|125|79|60|100|81
+메가갸라도스|95|155|109|70|130|81
+샤미드|130|65|60|110|95|65
+쥬피썬더|65|65|60|110|95|130
+부스터|65|130|60|95|110|65
+프테라|80|105|65|60|75|130
+메가프테라|80|135|85|70|95|150
+잠만보|160|110|65|65|110|30
+망나뇽|91|134|95|100|100|80
+메가니움|80|82|100|83|100|80
+블레이범|78|84|78|109|85|100
+장크로다일|85|105|100|79|83|78
+전룡|90|75|85|115|90|55
+메가전룡|90|95|105|165|110|45
+마릴리|100|50|80|60|80|50
+왕구리|90|75|75|90|100|70
+에브이|65|65|60|130|95|110
+야도킹|95|75|80|100|110|30
+강철톤|75|85|200|55|65|30
+메가강철톤|75|125|230|55|95|30
+핫삼|70|130|100|55|80|65
+메가핫삼|70|150|140|65|100|75
+헤라크로스|80|125|75|40|95|85
+메가헤라크로스|80|185|115|40|105|75
+헬가|75|90|50|110|80|95
+메가헬가|75|90|90|140|90|115
+마기라스|100|134|110|95|100|61
+메가마기라스|100|164|150|95|120|71
+나무킹|70|85|65|105|85|120
+메가나무킹|70|110|75|145|85|145
+번치코|80|120|70|110|70|80
+메가번치코|80|160|80|130|80|100
+대짱이|100|110|90|85|90|60
+메가대짱이|100|150|110|95|110|70
+가디안|68|65|65|125|115|80
+메가가디안|68|85|65|165|135|100
+보스로라|70|110|180|60|60|50
+메가보스로라|70|140|230|60|80|50
+요가램|60|60|75|60|75|80
+메가요가램|60|100|85|80|85|100
+썬더볼트|70|75|60|105|60|105
+메가썬더볼트|70|75|80|135|80|135
+밀로틱|95|60|79|100|125|81
+앱솔|65|130|60|75|60|75
+메가앱솔|65|150|60|115|60|115
+메타그로스|80|135|130|95|90|70
+메가메타그로스|80|145|150|105|110|110
+토대부기|95|109|105|75|85|56
+초염몽|76|104|71|104|71|108
+엠페르트|84|86|88|111|101|60
+찌르호크|85|120|70|50|60|100
+렌트라|80|120|79|95|79|70
+로즈레이드|60|70|65|125|105|90
+한카리아스|108|130|95|80|85|102
+메가한카리아스|108|170|115|120|95|92
+루카리오|70|110|70|115|70|90
+메가루카리오|70|145|88|140|70|112
+포푸니라|70|120|65|45|85|125
+거대코뿌리|115|140|130|55|55|40
+리피아|65|110|130|60|65|95
+글레이시아|65|60|110|130|95|65
+글라이온|75|95|125|45|75|95
+맘모꾸리|110|130|80|70|60|80
+엘레이드|68|125|65|65|115|80
+메가엘레이드|68|165|95|65|115|110
+샤로다|75|75|95|75|95|113
+염무왕|110|123|65|100|65|65
+대검귀|95|100|85|108|70|70
+몰드류|110|135|60|50|65|88
+노보청|105|140|95|55|65|45
+악비아르|95|117|80|65|70|92
+조로아크|60|105|60|120|60|105
+샹델라|60|55|90|145|90|80
+삼삼드래|92|105|90|125|90|98
+불카모스|85|60|65|135|105|100
+개굴닌자|72|95|67|103|71|122
+파이어로|78|81|71|74|69|126
+킬가르도|60|50|140|50|140|60
+님피아|95|65|65|110|130|60
+음번|85|70|80|97|80|123
+모크나이퍼|78|107|75|100|100|70
+어흥염|95|115|90|80|90|60
+누리레느|80|74|74|126|116|60
+아머까오|98|87|105|53|85|67
+드래펄트|88|120|75|100|75|142
+마스카나|76|110|70|81|70|123
+라우드본|104|75|100|110|75|66
+콜로솔트|100|100|130|45|90|35
+파라블레이즈|75|125|80|60|100|85`;
+
+const RAW_TYPES = `이상해꽃|풀,독
+메가이상해꽃|풀,독
+리자몽|불꽃,비행
+메가리자몽Y|불꽃,비행
+메가리자몽X|불꽃,드래곤
+거북왕|물
+메가거북왕|물
+독침붕|벌레,독
+메가독침붕|벌레,독
+피죤투|노말,비행
+메가피죤투|노말,비행
+아보크|독
+라이츄|전기
+픽시|페어리
+나인테일|불꽃
+라플레시아|풀,독
+윈디|불꽃
+후딘|에스퍼
+메가후딘|에스퍼
+괴력몬|격투
+우츠보트|풀,독
+야도란|물,에스퍼
+메가야도란|물,에스퍼
+팬텀|고스트,독
+메가팬텀|고스트,독
+캥카|노말
+메가캥카|노말
+쁘사이저|벌레
+메가쁘사이저|벌레,비행
+켄타로스|노말
+갸라도스|물,비행
+메가갸라도스|물,악
+샤미드|물
+쥬피썬더|전기
+부스터|불꽃
+프테라|바위,비행
+메가프테라|바위,비행
+잠만보|노말
+망나뇽|드래곤,비행
+메가니움|풀
+블레이범|불꽃
+장크로다일|물
+전룡|전기
+메가전룡|전기,드래곤
+마릴리|물,페어리
+왕구리|물
+에브이|에스퍼
+야도킹|물,에스퍼
+강철톤|강철,땅
+메가강철톤|강철,땅
+핫삼|벌레,강철
+메가핫삼|벌레,강철
+헤라크로스|벌레,격투
+메가헤라크로스|벌레,격투
+헬가|악,불꽃
+메가헬가|악,불꽃
+마기라스|바위,악
+메가마기라스|바위,악
+나무킹|풀
+메가나무킹|풀,드래곤
+번치코|불꽃,격투
+메가번치코|불꽃,격투
+대짱이|물,땅
+메가대짱이|물,땅
+가디안|에스퍼,페어리
+메가가디안|에스퍼,페어리
+보스로라|강철,바위
+메가보스로라|강철
+요가램|격투,에스퍼
+메가요가램|격투,에스퍼
+썬더볼트|전기
+메가썬더볼트|전기
+밀로틱|물
+앱솔|악
+메가앱솔|악
+메타그로스|강철,에스퍼
+메가메타그로스|강철,에스퍼
+토대부기|풀,땅
+초염몽|불꽃,격투
+엠페르트|물,강철
+찌르호크|노말,비행
+렌트라|전기
+로즈레이드|풀,독
+한카리아스|드래곤,땅
+메가한카리아스|드래곤,땅
+루카리오|격투,강철
+메가루카리오|격투,강철
+포푸니라|악,얼음
+거대코뿌리|땅,바위
+리피아|풀
+글레이시아|얼음
+글라이온|땅,비행
+맘모꾸리|얼음,땅
+엘레이드|격투,에스퍼
+메가엘레이드|격투,에스퍼
+샤로다|풀
+염무왕|불꽃,격투
+대검귀|물
+몰드류|땅,강철
+노보청|격투
+악비아르|땅,악
+조로아크|악
+샹델라|고스트,불꽃
+삼삼드래|악,드래곤
+불카모스|불꽃,벌레
+개굴닌자|물,악
+파이어로|불꽃,비행
+킬가르도|강철,고스트
+님피아|페어리
+음번|노말,비행
+모크나이퍼|풀,고스트
+어흥염|불꽃,악
+누리레느|물,페어리
+아머까오|비행,강철
+드래펄트|드래곤,고스트
+마스카나|풀,악
+라우드본|불꽃,고스트
+콜로솔트|바위
+파라블레이즈|불꽃,고스트`;
+
+const RAW_MOVES = `이상해꽃|대지의힘,광합성,기가드레인,오물폭탄,씨뿌리기,오물웨이브,수면가루,맹독,웨더볼,성장
+메가이상해꽃|대지의힘,광합성,기가드레인,오물폭탄,씨뿌리기,오물웨이브,수면가루,맹독,웨더볼,성장
+리자몽|솔라빔,화염방사,에어슬래시,플레어드라이브,니트로차지,역린,용의춤,오버히트,날개쉬기,번개펀치
+메가리자몽X|플레어드라이브,드래곤크루,역린,용의춤,니트로차지,번개펀치,지진,날개쉬기
+메가리자몽Y|솔라빔,화염방사,에어슬래시,불대문자,오버히트,기합구슬,용의파동,날개쉬기
+거북왕|파동탄,악의파동,껍질깨기,물의파동,냉동빔,아쿠아제트,미러코트,해수스파우팅,파도타기,용의파동
+메가거북왕|파동탄,악의파동,껍질깨기,물의파동,냉동빔,아쿠아제트,미러코트,해수스파우팅,파도타기,용의파동
+독침붕|독찌르기,유턴,드릴라이너,마지막일침,탁쳐서떨구기,덤벼들기,깨트리기,칼춤,지옥찌르기,크로스포이즌
+메가독침붕|독찌르기,유턴,드릴라이너,마지막일침,탁쳐서떨구기,덤벼들기,깨트리기,칼춤,지옥찌르기,크로스포이즌
+피죤투|폭풍,열풍,파괴광선,전광석화,대타출동,날개쉬기,유턴,순풍,날려버리기,깃털댄스
+메가피죤투|폭풍,열풍,파괴광선,전광석화,대타출동,날개쉬기,유턴,순풍,날려버리기,깃털댄스
+아보크|뱀눈초리,독압정,드래곤테일,아픔나누기,더스트슈트,탁쳐서떨구기,지진,독찌르기,맹독,깨물어부수기
+라이츄|10만볼트,볼트체인지,파동탄,풀묶기,전광석화,아이언테일,쌍둥이번개,벼락,전기자석파,잠재파워
+픽시|문포스,10만볼트,냉동빔,대타출동,아픔나누기,회복지원,대지의힘,드레인키스,미채,웨더볼
+나인테일|화염방사,열풍,잠재파워,대타출동,웨더볼,저주,헛기침,고백,오버히트,악몽
+라플레시아|기가드레인,오물웨이브,수면가루,씨뿌리기,꽃가루경단,대지의힘,대타출동,고백,꽃잎댄스,성장
+윈디|플레어드라이브,신속,인파이트,와일드볼트,열풍,깨물어부수기,아침햇살,포효,모닝썬,불대문자
+후딘|사이코키네시스,사이코쇼크,파동탄,매지컬샤인,불꽃펀치,얼음펀치,전기자석파,대타출동,회복지원,미러코트
+메가후딘|사이코키네시스,사이코쇼크,파동탄,매지컬샤인,불꽃펀치,얼음펀치,전기자석파,대타출동,회복지원,미러코트
+괴력몬|인파이트,지진,얼음펀치,번개펀치,불꽃펀치,벌크업,돌떨구기,깨트리기,DD래리어트
+우츠보트|오물폭탄,기가드레인,수면가루,씨뿌리기,대지의힘,꽃가루경단,파워휩,잎날가르기,고백,웨더볼
+야도란|사이코쇼크,냉동빔,파도타기,파동탄,불꽃방사,열탕,아픔나누기,회복지원,저주,사이코키네시스
+메가야도란|사이코쇼크,냉동빔,파도타기,파동탄,불꽃방사,열탕,아픔나누기,회복지원,저주,사이코키네시스
+팬텀|섀도볼,오물폭탄,기합구슬,길동무,도깨비불,오물웨이브,대타출동,매지컬샤인,얼어붙은바람,에너지볼
+메가팬텀|섀도볼,오물폭탄,기합구슬,길동무,도깨비불,오물웨이브,대타출동,매지컬샤인,얼어붙은바람,에너지볼
+캥카|이판사판태클,속이다,그로우펀치,지진,기습,불꽃펀치,냉동펀치,비밀의힘,은혜갚기
+메가캥카|이판사판태클,속이다,그로우펀치,지진,기습,불꽃펀치,냉동펀치,비밀의힘,은혜갚기
+쁘사이저|가위자르기,인파이트,지진,전광석화,칼춤,스톤에지,은혜갚기,탁쳐서떨구기
+메가쁘사이저|가위자르기,인파이트,지진,전광석화,칼춤,스톤에지,은혜갚기,탁쳐서떨구기
+켄타로스|이판사판태클,지진,흙발자국,신속,돌떨구기,깨트리기,분노의앞니,뜨거운바람,포효,와일드볼트
+갸라도스|폭포오르기,얼음엄니,불꽃엄니,지진,용의춤,깨물어부수기,돌떨구기,포효,드래곤테일,파도타기
+메가갸라도스|폭포오르기,깨물어부수기,지진,얼음엄니,용의춤,도발,대타출동
+샤미드|파도타기,냉동빔,아쿠아링,회복지원,대타출동,아쿠아제트,냉동펀치,흡수펀치,대타출동,헛기침
+쥬피썬더|10만볼트,볼트체인지,파동탄,잠재파워,대타출동,고백,회복지원,전기자석파,벼락,잔비스핀
+부스터|플레어드라이브,불꽃엄니,신속,벌크업,깨트리기,이판사판태클,대타출동,신속,돌떨구기,불대문자
+프테라|바위사태,돌떨구기,파괴광선,드릴라이너,얼음엄니,불꽃엄니,깨물어부수기,이판사판태클,신속,폭풍
+메가프테라|바위사태,돌떨구기,파괴광선,드릴라이너,얼음엄니,불꽃엄니,깨물어부수기,이판사판태클,신속,폭풍
+잠만보|이판사판태클,지진,얼음펀치,불꽃펀치,드레인펀치,잠재파워,자기재생,대타출동,저주,깨물어부수기
+망나뇽|신속,역린,지진,불꽃펀치,냉동빔,용의춤,번개펀치,폭포오르기,불대문자,날개쉬기
+메가니움|기가드레인,씨뿌리기,대타출동,광합성,오물폭탄,대지의힘,잎날가르기,꽃가루경단,모래폭풍,고백
+블레이범|분화,불대문자,기합구슬,잠재파워,신통력,화염방사,오버히트,도깨비불
+장크로다일|폭포오르기,얼음엄니,불꽃엄니,깨물어부수기,돌떨구기,지진,용의춤,깨트리기,아쿠아제트,대타출동
+전룡|10만볼트,볼트체인지,파동탄,파워젬,매지컬샤인,대타출동,전기자석파,고백,드래곤펄스,벼락
+메가전룡|10만볼트,볼트체인지,파동탄,파워젬,매지컬샤인,대타출동,전기자석파,고백,드래곤펄스,벼락
+마릴리|폭포오르기,플레이러프,얼음펀치,아쿠아제트,드레인펀치,탁쳐서떨구기,배북,엄청난힘
+왕구리|열탕,냉동빔,방어,앵코르,멸망의노래,최면술,파도타기,기합구슬
+에브이|사이코쇼크,냉동빔,10만볼트,플레어드라이브,인파이트,깨물어부수기,회복지원,잠재파워,파동탄,대타출동
+야도킹|사이코쇼크,파동탄,냉동빔,파도타기,불꽃방사,회복지원,아픔나누기,저주,사이코키네시스,헤도로웨이브
+강철톤|아이언헤드,지진,돌떨구기,이판사판태클,깨트리기,드릴라이너,자이로볼,대타출동,저주,포효
+메가강철톤|아이언헤드,지진,돌떨구기,이판사판태클,깨트리기,드릴라이너,자이로볼,대타출동,저주,포효
+핫삼|불릿펀치,유턴,도둑질,엄청난힘,칼춤,날개쉬기,제비반환,전광석화
+메가핫삼|불릿펀치,유턴,도둑질,엄청난힘,칼춤,날개쉬기,탁쳐서떨구기,벌레먹음
+헤라크로스|메가혼,인파이트,돌떨구기,깨트리기,DD래리어트,흙발자국,신속,벌크업,연속펀치,지진
+메가헤라크로스|바늘미사일,락블라스트,기관총,인파이트,지진,칼춤,대타출동
+헬가|플레어드라이브,악의파동,깨물어부수기,불대문자,오버히트,드래곤펄스,돌떨구기,저주,깨트리기,연속펀치
+메가헬가|플레어드라이브,악의파동,깨물어부수기,불대문자,오버히트,드래곤펄스,돌떨구기,저주,깨트리기,연속펀치
+마기라스|스톤에지,깨물어부수기,지진,냉동펀치,불꽃펀치,용의춤,따라가때리기,엄청난힘
+메가마기라스|스톤에지,깨물어부수기,지진,냉동펀치,불꽃펀치,용의춤,따라가때리기,엄청난힘
+나무킹|리프스톰,기가드레인,기합구슬,잠재파워,용의파동,지진,애크러뱃,씨뿌리기
+메가나무킹|리프스톰,기가드레인,기합구슬,잠재파워,용의파동,지진,애크러뱃,씨뿌리기
+번치코|플레어드라이브,무릎차기,방어,칼춤,지진,브레이브버드,번개펀치,바톤터치
+메가번치코|플레어드라이브,무릎차기,방어,칼춤,지진,브레이브버드,번개펀치,스톤에지
+대짱이|지진,폭포오르기,냉동펀치,하품,스텔스록,울부짖기,탁쳐서떨구기
+메가대짱이|지진,폭포오르기,냉동펀치,비바라기,냉동빔,엄청난힘
+가디안|문포스,사이코키네시스,사이코쇼크,기합구슬,명상,길동무,10만볼트
+메가가디안|하이퍼보이스,사이코키네시스,사이코쇼크,기합구슬,명상,도발,길동무
+보스로라|헤비봄버,돌떨구기,이판사판태클,지진,깨트리기,저주,포효,회복지원,드릴라이너,이판사판
+메가보스로라|헤비봄버,돌떨구기,이판사판태클,지진,깨트리기,저주,포효,회복지원,드릴라이너,이판사판
+요가램|속이다,무릎차기,사념의박치기,냉동펀치,불릿펀치,번개펀치
+메가요가램|속이다,무릎차기,사념의박치기,냉동펀치,불릿펀치,번개펀치
+썬더볼트|10만볼트,볼트체인지,오버히트,화염방사,잠재파워,전기자석파
+메가썬더볼트|10만볼트,볼트체인지,오버히트,화염방사,잠재파워,전기자석파
+밀로틱|열탕,냉동빔,고백,회복지원,매지컬샤인,대타출동,파도타기,아쿠아링,잠재파워,드래곤테일
+앱솔|탁쳐서떨구기,기습,엄청난힘,따라가때리기,칼춤,플레이러프
+메가앱솔|탁쳐서떨구기,기습,엄청난힘,따라가때리기,칼춤,불대문자,냉동빔
+메타그로스|코멧펀치,불릿펀치,사념의박치기,지진,냉동펀치,대폭발,트릭,스텔스록
+메가메타그로스|코멧펀치,불릿펀치,사념의박치기,지진,냉동펀치,대폭발,암해머
+토대부기|지진,우드해머,스톤에지,씨뿌리기,광합성,스텔스록,엄청난힘
+초염몽|플레어드라이브,인파이트,마하펀치,속이다,오버히트,유턴,풀묶기,스톤에지
+엠페르트|열탕,하이드로펌프,냉동빔,풀묶기,아쿠아제트,스텔스록,하품,탁쳐서떨구기
+찌르호크|브레이브버드,이판사판태클,인파이트,유턴,전광석화,목숨걸기
+렌트라|와일드볼트,얼음엄니,엄청난힘,볼트체인지,깨물어부수기,전광석화
+로즈레이드|오물폭탄,기가드레인,리프스톰,잠재파워,수면가루,독압정,신통력
+한카리아스|지진,역린,스톤에지,칼춤,불꽃엄니,스텔스록,독찌르기
+메가한카리아스|지진,역린,스톤에지,칼춤,불대문자,용성군,독찌르기
+루카리오|인파이트,신속,칼춤,불릿펀치,지진,냉동펀치,파동탄,러스터캐논
+메가루카리오|인파이트,신속,칼춤,불릿펀치,지진,냉동펀치,파동탄,러스터캐논
+포푸니라|탁쳐서떨구기,고드름떨구기,얼음뭉치,안다리걸기,속이다,독찌르기
+거대코뿌리|지진,락블라스트,스톤에지,냉동펀치,메가혼,스텔스록,불꽃펀치
+리피아|리프블레이드,탁쳐서떨구기,칼춤,광합성,제비반환,전광석화
+글레이시아|눈보라,냉동빔,프리즈드라이,섀도볼,잠재파워,얼음뭉치
+글라이온|지진,가위자르기,방어,대타출동,맹독,얼음엄니,탁쳐서떨구기
+맘모꾸리|지진,고드름떨구기,얼음뭉치,탁쳐서떨구기,스텔스록,엄청난힘
+엘레이드|인파이트,사념의박치기,탁쳐서떨구기,야습,냉동펀치,칼춤,길동무
+메가엘레이드|인파이트,사념의박치기,탁쳐서떨구기,야습,냉동펀치,칼춤,길동무
+샤로다|리프스톰,뱀눈초리,잠재파워,기가드레인,씨뿌리기,도발,리플렉터
+염무왕|플레어드라이브,엄청난힘,와일드볼트,기습,양날박치기,지진
+대검귀|하이드로펌프,파도타기,아쿠아제트,냉동빔,메가혼,엄청난힘,탁쳐서떨구기
+몰드류|지진,아이언헤드,스톤에지,칼춤,뿔드릴,스마트혼,제비반환
+노보청|드레인펀치,마하펀치,탁쳐서떨구기,냉동펀치,벌크업,독찌르기
+악비아르|지진,탁쳐서떨구기,속임수,스텔스록,도발,스톤에지,엄청난힘
+조로아크|나이트버스트,화염방사,기합구슬,풀묶기,기습,탁쳐서떨구기,도발
+샹델라|섀도볼,불대문자,오버히트,에너지볼,트릭,도발,클리어스모그
+삼삼드래|악의파동,용성군,불대문자,유턴,기합구슬,대지의힘,도발
+불카모스|나비춤,불대문자,벌레의야단법석,기가드레인,잠재파워,날개쉬기
+개굴닌자|파도타기,악의파동,냉동빔,물수리검,풀묶기,더스트슈트,안다리걸기,유턴
+파이어로|브레이브버드,플레어드라이브,유턴,날개쉬기,칼춤,도발,순풍
+킬가르도|섀도볼,러스터캐논,야습,성스러운칼,킹실드,칼춤,맹독
+님피아|하이퍼보이스,하품,방어,희망사항,매지컬플레임,사이코쇼크,섀도볼
+음번|용성군,폭풍,화염방사,유턴,분노의앞니,도발,순풍
+모크나이퍼|그림자꿰매기,리프블레이드,기습,유턴,브레이브버드,칼춤
+어흥염|플레어드라이브,DD래리어트,탁쳐서떨구기,속이다,유턴,지진
+누리레느|물거품아리아,문포스,아쿠아제트,에너지볼,사이코키네시스,멸망의노래
+아머까오|브레이브버드,바디프레스,철벽,날개쉬기,유턴,도발,벌크업
+드래펄트|드래곤애로,고스트다이브,유턴,불대문자,용성군,도깨비불,용의춤
+마스카나|트릭플라워,탁쳐서떨구기,기습,유턴,트리플악셀,치근거리기,개척하기
+라우드본|플레어송,섀도볼,대지의힘,도깨비불,게으름피우기,하품,재앙의떨구기
+콜로솔트|소금절이,바디프레스,철벽,HP회복,스텔스록,지진,헤비봄버
+파라블레이즈|원념의칼,야습,인파이트,칼춤,섀도클로,야습,길동무`;
+
+const ITEMS = [
+  {n:"구애머리띠",e:"물리 공격력 1.5배"},
+  {n:"구애안경",e:"특수 공격력 1.5배"},
+  {n:"구애스카프",e:"스피드 1.5배"},
+  {n:"생명의구슬",e:"기술 위력 1.3배"},
+  {n:"기합의띠",e:"HP 풀피 시 1 버팀"},
+  {n:"먹다남은음식",e:"매 턴 HP 회복"}
+];
+
+const FIELDS = [
+  {n:"쾌청",e:"불꽃 위력 1.5배 / 물 위력 0.5배"},
+  {n:"비",e:"물 위력 1.5배 / 불꽃 위력 0.5배"},
+  {n:"모래바람",e:"바위 타입 특방 1.5배"},
+  {n:"눈",e:"얼음 타입 방어 1.5배"},
+  {n:"일렉트릭필드",e:"전기 위력 1.3배"},
+  {n:"글래스필드",e:"풀 위력 1.3배"},
+  {n:"사이코필드",e:"에스퍼 위력 1.3배"},
+  {n:"미스트필드",e:"드래곤 피해 0.5배"},
+  {n:"트릭룸",e:"느린 포켓몬 선공"}
+];
+
+const STATUS = [
+  {n:"화상",e:"물리 데미지 0.5배 (불꽃 면역)"},
+  {n:"마비",e:"스피드 0.5배 (전기 면역)"}
+];
+
+const NATURES = {
+  "명랑":{up:"스피드",dn:"특공"}, "고집":{up:"공격",dn:"특공"},
+  "겁쟁이":{up:"스피드",dn:"공격"}, "조심":{up:"특공",dn:"공격"},
+  "대담":{up:"방어",dn:"공격"}, "차분":{up:"특방",dn:"공격"},
+  "장난꾸러기":{up:"방어",dn:"특공"}, "신중":{up:"특방",dn:"공격"},
+  "무사태평":{up:"방어",dn:"스피드"}, "건방":{up:"특방",dn:"스피드"},
+  "용감":{up:"공격",dn:"스피드"}, "냉정":{up:"특공",dn:"스피드"}
+};
+
+// 기술 속성 및 타입 판별
+function moveInfo(name){
+  const isStatus = /변화|저주|고백|회복|고속|성장|순풍|날려|방어|가루|춤|씨뿌리|광합성|맹독|자석파|도깨비|명상|하품|도발|스텔스|철벽|게으름|트릭|길동무|앵코르|멸망|날개쉬기|껍질|미러코트|눈초리|압정|나누기|대타|헛기침|악몽|모닝썬|미채|스핀|벌크|최면|디펜스|킹실드|희망|배북|아쿠아링|리플렉터|바톤|울부|애교|장막|카운터|안개|추억/.test(name);
+  if(isStatus) return { bp: 0, type: "노말", cat: "변화", name }; 
+  
+  const isPhysical = /펀치|킥|엄니|태클|물리|찌르|헤드|볼트|날개|드릴|폭포|잎|바위|이판사판|인파이트|신속|지진|크로스|유턴|탁쳐|메가혼|스톤|블라스트|기관총|바늘|속이다|기습|떨구기|다이브|클로|프레스|절이|치근|야습|역린|폭포오르기|아쿠아제트|은혜갚기|마하|안다리|무릎차기|브레이브|제비반환|애크러뱃|성스러운칼/.test(name);
+  
+  let type = "노말";
+  if(/불|화염|플레어|오버히트|분화|대문자|송|원념/.test(name)) type = "불꽃";
+  else if(/물|파도|폭포|아쿠아|하이드로|열탕|거품|수리검|다이빙/.test(name)) type = "물";
+  else if(/풀|잎|씨|광합성|기가|우드|리프|에너지볼|플라워|개척/.test(name)) type = "풀";
+  else if(/전|볼트|10만|벼락|번개|와일드/.test(name)) type = "전기";
+  else if(/얼음|블리자드|냉동|눈보라|고드름|뭉치|프리즈|악셀/.test(name)) type = "얼음";
+  else if(/격투|파동탄|인파이트|드레인|엄청난|무릎|마하|안다리|바디프레스|성스러운/.test(name)) type = "격투";
+  else if(/독|헤도로|오물|더스트|클리어스모그/.test(name)) type = "독";
+  else if(/땅|지진|드릴|대지|진흙/.test(name)) type = "땅";
+  else if(/바위|돌|파워젬|스톤에지|블라스트|소금/.test(name)) type = "바위";
+  else if(/벌레|메가혼|유턴|야단법석|벌레먹음/.test(name)) type = "벌레";
+  else if(/고스트|섀도|야습|다이브|꿰매기/.test(name)) type = "고스트";
+  else if(/악|깨물|탁쳐|기습|파동|속임수|나이트|재앙/.test(name)) type = "악";
+  else if(/강철|아이언|헤비봄버|스마트혼|러스터|코멧|불릿/.test(name)) type = "강철";
+  else if(/페어리|샤인|문포스|플레이러프|플레임|치근거리기/.test(name)) type = "페어리";
+  else if(/드래곤|용|역린|애로/.test(name)) type = "드래곤";
+  else if(/에스퍼|사이코|신통력|사념|사념의/.test(name)) type = "에스퍼";
+  else if(/비행|공중|폭풍|에어|브레이브|제비|애크러뱃/.test(name)) type = "비행";
+
+  return { bp: 80, type, cat: isPhysical ? "물리" : "특수", name };
+}
+
+function typeEff(mvType, defTypes) {
+  const TYPE_CHART = {
+    "노말":{"바위":.5,"고스트":0,"강철":.5},
+    "불꽃":{"불꽃":.5,"물":.5,"풀":2,"얼음":2,"벌레":2,"바위":.5,"드래곤":.5,"강철":2},
+    "물":{"불꽃":2,"물":.5,"풀":.5,"땅":2,"바위":2,"드래곤":.5},
+    "전기":{"물":2,"전기":.5,"풀":.5,"땅":0,"비행":2,"드래곤":.5},
+    "풀":{"불꽃":.5,"물":2,"풀":.5,"독":.5,"땅":2,"비행":.5,"벌레":.5,"바위":2,"드래곤":.5,"강철":.5},
+    "얼음":{"불꽃":.5,"물":.5,"풀":2,"얼음":.5,"땅":2,"비행":2,"드래곤":2,"강철":.5},
+    "격투":{"노말":2,"얼음":2,"독":.5,"비행":.5,"에스퍼":.5,"벌레":.5,"바위":2,"고스트":0,"악":2,"강철":2,"페어리":.5},
+    "독":{"풀":2,"독":.5,"땅":.5,"바위":.5,"고스트":.5,"강철":0,"페어리":2},
+    "땅":{"불꽃":2,"전기":2,"풀":.5,"독":2,"비행":0,"벌레":.5,"바위":2,"강철":2},
+    "비행":{"전기":.5,"풀":2,"격투":2,"벌레":2,"바위":.5,"강철":.5},
+    "에스퍼":{"격투":2,"독":2,"에스퍼":.5,"악":0,"강철":.5},
+    "벌레":{"불꽃":.5,"풀":2,"격투":.5,"독":.5,"비행":.5,"에스퍼":2,"고스트":.5,"악":2,"강철":.5,"페어리":.5},
+    "바위":{"불꽃":2,"얼음":2,"격투":.5,"땅":.5,"비행":2,"벌레":2,"강철":.5},
+    "고스트":{"노말":0,"에스퍼":2,"고스트":2,"악":.5},
+    "드래곤":{"드래곤":2,"강철":.5,"페어리":0},
+    "악":{"격투":.5,"에스퍼":2,"고스트":2,"악":.5,"페어리":.5},
+    "강철":{"불꽃":.5,"물":.5,"전기":.5,"얼음":2,"바위":2,"강철":.5,"페어리":2},
+    "페어리":{"불꽃":.5,"격투":2,"독":.5,"드래곤":2,"악":2,"강철":.5}
+  };
+  let e = 1; 
+  defTypes.forEach(t => { const v = TYPE_CHART[mvType]?.[t]; if(v !== undefined) e *= v; });
+  return e;
+}
+
+function parsePipeMap(raw, parser){
+  const out={};
+  raw.split(/\r?\n/).forEach(line=>{
+    const idx = line.indexOf("|");
+    if(idx === -1) return;
+    const k = line.substring(0, idx).trim();
+    const rest = line.substring(idx + 1).trim();
+    out[k] = parser ? parser(rest) : rest;
+  });
+  return out;
+}
+
+const STATS = parsePipeMap(RAW_STATS, s => s.split("|").map(x => Number(x) || 0));
+const TYPES = parsePipeMap(RAW_TYPES, s => s.split(",").map(x => x.trim()));
+const MOVES = parsePipeMap(RAW_MOVES, s => s.split(",").map(x => x.trim()));
+
+const POKEDEX = Object.keys(STATS).map(name => ({
+  name,
+  dexId: DEX[name] || 25,
+  zeroEvStats: STATS[name],
+  types: TYPES[name] || ["노말"],
+  moves: MOVES[name] || ["몸통박치기", "방어", "지진", "파도타기"],
+  imageUrl: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${DEX[name]||25}.png`
+}));
+
+/* ============================================================
+   SYSTEM LOGIC
+   ============================================================ */
+let state = { view: 'landing', diff: '보통', round: 0, score: 0, pA: null, pB: null, field: null, result: null, qIdx: 0, qPool: [] };
+
+function rnd(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function rInt(a,b){ return a + Math.floor(Math.random()*(b-a+1)); }
+function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+// 20라운드를 위한 균등한 질문 풀 생성 (연속 3번 출제 방지)
+function createQuestionPool() {
+  let pool = [0,0,0,0, 1,1,1,1, 2,2,2,2, 3,3,3,3, 4,4,4,4];
+  let valid = false;
+  while(!valid) {
+    pool = shuffle(pool);
+    valid = true;
+    for(let i=0; i<pool.length-2; i++) {
+      if(pool[i] === pool[i+1] && pool[i] === pool[i+2]) {
+        valid = false;
+        break;
+      }
+    }
+  }
+  return pool;
+}
+
+function classify(p){
+  const [hp, atk, def, spa, spd, spe] = p.zeroEvStats; 
+  const isPhysical = atk >= spa;
+  const isAttacker = Math.max(atk, spa) >= 90;
+
+  if(isAttacker) {
+    let isFast = false;
+    if(spe >= 130) {
+      isFast = Math.random() < 0.8;
+    } else if(spe >= 100) {
+      isFast = Math.random() < 0.5;
+    } else {
+      isFast = Math.random() < 0.1;
+    }
+
+    if(isPhysical) {
+      if(isFast) return {role:"고속물리어태커", ev:{HP:2,공격:32,방어:0,특공:0,특방:0,스피드:32}, natures:["명랑","고집"], isAttacker:true};
+      else return {role:"내구물리어태커", ev:{HP:32,공격:32,방어:0,특공:0,특방:0,스피드:2}, natures:["고집","용감"], isAttacker:true};
+    } else {
+      if(isFast) return {role:"고속특공어태커", ev:{HP:2,공격:0,방어:0,특공:32,특방:0,스피드:32}, natures:["겁쟁이","조심"], isAttacker:true};
+      else return {role:"내구특공어태커", ev:{HP:32,공격:0,방어:0,특공:32,특방:0,스피드:2}, natures:["조심","냉정"], isAttacker:true};
+    }
+  } else {
+    if(def >= spd) return {role:"물리내구막이", ev:{HP:32,공격:0,방어:32,특공:0,특방:2,스피드:0}, natures:["장난꾸러기","대담"], isAttacker:false};
+    else return {role:"특수내구막이", ev:{HP:32,공격:0,방어:2,특공:0,특방:32,스피드:0}, natures:["신중","차분"], isAttacker:false};
+  }
+}
+
+function calcStats(zeroEvStats, evs, nature){
+  const STAT_KEYS = ["HP","공격","방어","특공","특방","스피드"];
+  const arr=[];
+  STAT_KEYS.forEach((k,i)=>{
+    let v = zeroEvStats[i] + (evs[k] || 0);
+    if(k !== "HP" && nature && NATURES[nature]){
+      if(NATURES[nature].up===k) v = Math.floor(v * 1.1);
+      if(NATURES[nature].dn===k) v = Math.floor(v * 0.9);
+    }
+    arr.push(v);
+  });
+  return arr;
+}
+
+function rankMult(r){ return r>=0 ? (2+r)/2 : 2/(2-r); }
+
+function buildUnit(pkm, difficulty){
+  const role = classify(pkm);
+  const nature = rnd(role.natures);
+  const stats = calcStats(pkm.zeroEvStats, role.ev, nature);
+  const item = rnd(ITEMS);
+  
+  const shuffledMoves = shuffle([...pkm.moves]);
+  const dmgFirst = shuffledMoves.find(n => moveInfo(n).cat !== "변화") || shuffledMoves[0];
+  const rest = shuffledMoves.filter(n => n !== dmgFirst).slice(0, 3);
+  const selectedMoves = [dmgFirst, ...rest];
+  
+  let rankUp = {공격:0,방어:0,특공:0,특방:0,스피드:0};
+  let status = null;
+
+  if(difficulty !== "쉬움"){
+    const vars = ["랭크"];
+    if(difficulty === "어려움") vars.push("상태");
+    
+    if(vars.includes("랭크")){
+      if(role.isAttacker){
+        const k = role.role.includes("특공")?"특공":"공격";
+        rankUp[k] = rInt(1,2);
+        if(Math.random()<0.5) rankUp["스피드"] = rInt(1,2);
+      } else {
+        const k = role.role.includes("특수")?"특방":"방어";
+        rankUp[k] = rInt(1,2);
+      }
+    }
+    if(vars.includes("상태")){
+      const st = rnd(STATUS);
+      if(st.n==="화상" && !pkm.types.includes("불꽃")) status = st;
+      else if(st.n==="마비" && !pkm.types.includes("전기")) status = st;
+    }
+  }
+
+  return { pkm, role, nature, stats, item, rankUp, status, moves: selectedMoves };
+}
+
+function initRound() {
+  // 이번 라운드에 출제될 지정된 질문 
+  state.qIdx = state.qPool[state.round];
+  
+  let a, b, pA, pB;
+  let validPair = false;
+
+  // 선택된 질문에 완벽히 들어맞는 포켓몬 쌍이 뽑힐 때까지 무한 반복 (가챠)
+  while(!validPair) {
+    a = rnd(POKEDEX);
+    b = rnd(POKEDEX);
+    if(a.name === b.name) continue;
+
+    pA = buildUnit(a, state.diff);
+    pB = buildUnit(b, state.diff);
+    
+    // 역할군이 다르면 탈락 (어태커 vs 막이형 금지)
+    if(pA.role.isAttacker !== pB.role.isAttacker) continue;
+
+    let evA = pA.role.ev;
+    let evB = pB.role.ev;
+
+    // 0: 스피드 (둘 다 스피드 노력치 32여야 통과)
+    if(state.qIdx === 0 && (evA.스피드 !== 32 || evB.스피드 !== 32)) continue;
+    // 1: 물리공격 (둘 다 공격 노력치 32여야 통과)
+    if(state.qIdx === 1 && (evA.공격 !== 32 || evB.공격 !== 32)) continue;
+    // 2: 특수공격 (둘 다 특공 노력치 32여야 통과)
+    if(state.qIdx === 2 && (evA.특공 !== 32 || evB.특공 !== 32)) continue;
+    // 3: 방어 (둘 다 방어 노력치 32여야 통과)
+    if(state.qIdx === 3 && (evA.방어 !== 32 || evB.방어 !== 32)) continue;
+    // 4: 1번 기술 기절 (5번 질문은 어태커끼리 맞붙도록)
+    if(state.qIdx === 4 && (!pA.role.isAttacker || !pB.role.isAttacker)) continue;
+
+    validPair = true; // 모든 조건을 통과했으므로 이 쌍을 채택
+  }
+
+  state.pA = pA;
+  state.pB = pB;
+  
+  if(state.diff !== "쉬움" && Math.random() < 0.6) {
+    state.field = rnd(FIELDS);
+  } else {
+    state.field = null;
+  }
+  
+  state.result = null;
+}
+
+/* ============================================================
+   CALCULATION LOGIC
+   ============================================================ */
+function getSpeed(unit){
+  let baseVal = unit.pkm.zeroEvStats[5];
+  let realVal = unit.stats[5];
+  let v = realVal;
+  let log = [`무보정 실수치 ${baseVal} + 스피드 노력치 ${unit.role.ev.스피드} → 실수치(성격 ${unit.nature}): ${realVal}`];
+
+  if(unit.rankUp.스피드){
+    const m = rankMult(unit.rankUp.스피드);
+    v = Math.floor(v*m);
+    log.push(`랭크업(+${unit.rankUp.스피드}): ×${m.toFixed(2)} → ${v}`);
+  }
+  if(unit.item.n === "구애스카프"){ v = Math.floor(v*1.5); log.push(`구애스카프: ×1.5 → ${v}`); }
+  if(unit.status?.n === "마비"){ v = Math.floor(v*0.5); log.push(`마비: ×0.5 → ${v}`); }
+  return { val: v, log };
+}
+
+function getAtk(unit, kind){
+  const idx = kind==="공격"?1:3;
+  let baseVal = unit.pkm.zeroEvStats[idx];
+  let realVal = unit.stats[idx];
+  let v = realVal;
+  let log = [`무보정 실수치 ${baseVal} + ${kind} 노력치 ${unit.role.ev[kind]||0} → 실수치(성격 ${unit.nature}): ${realVal}`];
+
+  const r = kind==="공격"?unit.rankUp.공격:unit.rankUp.특공;
+  if(r){
+    const m = rankMult(r);
+    v = Math.floor(v*m);
+    log.push(`랭크업(+${r}): ×${m.toFixed(2)} → ${v}`);
+  }
+  if(kind==="공격" && unit.item.n==="구애머리띠"){ v = Math.floor(v*1.5); log.push(`구애머리띠: ×1.5 → ${v}`); }
+  if(kind==="특공" && unit.item.n==="구애안경"){ v = Math.floor(v*1.5); log.push(`구애안경: ×1.5 → ${v}`); }
+  if(kind==="공격" && unit.status?.n==="화상"){ v = Math.floor(v*0.5); log.push(`화상 패널티: ×0.5 → ${v}`); }
+  return { val: v, log };
+}
+
+function getDef(unit, kind = "방어"){
+  const idx = kind==="방어"?2:4;
+  let baseVal = unit.pkm.zeroEvStats[idx];
+  let realVal = unit.stats[idx];
+  let v = realVal;
+  let log = [`무보정 실수치 ${baseVal} + 방어 노력치 ${unit.role.ev.방어||0} → 실수치(성격 ${unit.nature}): ${realVal}`];
+
+  const r = kind==="방어"?unit.rankUp.방어:unit.rankUp.특방;
+  if(r){
+    const m = rankMult(r);
+    v = Math.floor(v*m);
+    log.push(`랭크업(+${r}): ×${m.toFixed(2)} → ${v}`);
+  }
+  if(state.field?.n === "눈" && kind==="방어" && unit.pkm.types.includes("얼음")){
+    v = Math.floor(v*1.5);
+    log.push(`눈 날씨(얼음타입): ×1.5 → ${v}`);
+  }
+  return { val: v, log };
+}
+
+function damage(attacker, defender) {
+  const mv = moveInfo(attacker.moves[0]);
+  let lines = [`【사용 기술】 ${mv.name} (${mv.type}/${mv.cat}, 위력 ${mv.bp})`];
+  if(mv.bp === 0 || mv.cat === "변화") return { ko: false, dmg: 0, lines: [...lines, "변화기 → 데미지 0"] };
+
+  const off = getAtk(attacker, mv.cat === "물리" ? "공격" : "특공");
+  const def = getDef(defender, mv.cat === "물리" ? "방어" : "특방");
+  
+  let dmg = Math.floor(Math.floor(Math.floor(2*50/5+2) * mv.bp * off.val / def.val)/50) + 2;
+
+  if(attacker.pkm.types.includes(mv.type)){ dmg = Math.floor(dmg*1.5); lines.push(`자속 보정 ×1.5 → ${dmg}`); }
+  const eff = typeEff(mv.type, defender.pkm.types);
+  if(eff !== 1){ dmg = Math.floor(dmg*eff); lines.push(`타입 상성 ×${eff} → ${dmg}`); }
+  if(mv.cat === "물리" && attacker.status?.n === "화상"){ dmg = Math.floor(dmg*0.5); lines.push(`화상 패널티 ×0.5 → ${dmg}`); }
+  if(attacker.item.n === "생명의구슬"){ dmg = Math.floor(dmg*1.3); lines.push(`생명의구슬 ×1.3 → ${dmg}`); }
+
+  const minDmg = Math.floor(dmg * 0.85);
+  const hp = defender.stats[0];
+  const ko = minDmg >= hp;
+  
+  lines.push(`예상 데미지: ${minDmg}~${dmg} / 상대방 HP: ${hp}`);
+  return { ko, dmg, lines };
+}
+
+/* ============================================================
+   RENDER UI
+   ============================================================ */
+function render() {
+  const root = document.getElementById('app');
+  
+  if (state.view === 'landing') {
+    root.innerHTML = `
+      <div class="landing">
+        <h1>포켓몬 밸런스 게임</h1>
+        <p>노력치와 성격이 반영된 최종 실수치와 전투 데미지를 계산하여 더 우수한 포켓몬을 맞혀보세요!</p>
+        <div class="row">
+          <button class="btn primary" onclick="state.view='diff'; render();">난이도 선택</button>
+          <button class="btn" onclick="state.view='help'; render();">게임 설명</button>
+        </div>
+      </div>`;
+  } 
+  else if (state.view === 'help') {
+    root.innerHTML = `
+      <div class="instr">
+        <h3>🎮 게임 방법</h3>
+        상단 질문을 읽고 조건상 우위에 있는 포켓몬 카드를 클릭하세요. 총 20라운드로 진행됩니다.
+        <h3>❓ 5가지 질문 유형</h3>
+        1) 더 스피드가 빠른 포켓몬은?<br/>
+        2) 물리공격력이 더 높은 포켓몬은?<br/>
+        3) 특수공격력이 더 높은 포켓몬은?<br/>
+        4) 물리내구(방어)가 더 높은 포켓몬은?<br/>
+        5) 1번 기술 사용 시 상대를 먼저 기절시키는 포켓몬은?<br>
+        <i>* 포켓몬에 공통으로 투자된 노력치(EV)에 대해서만 질문이 출제됩니다!</i>
+        <h3>⚔️ 난이도 설정</h3>
+        <b>쉬움</b>: 기본 실수치 + 성격 + 도구<br/>
+        <b>보통</b>: 랭크업 또는 필드 효과 추가<br/>
+        <b>어려움</b>: 랭크업, 필드, 상태이상 조합 적용
+        <div style="margin-top:16px;text-align:center">
+          <button class="btn" onclick="state.view='landing'; render();">뒤로가기</button>
+        </div>
+      </div>`;
+  }
+  else if (state.view === 'diff') {
+    root.innerHTML = `
+      <div class="landing">
+        <h1>난이도 선택</h1>
+        <div class="row">
+          <button class="btn primary" onclick="startGame('쉬움')">쉬움 (기본 스탯/도구)</button>
+          <button class="btn primary" onclick="startGame('보통')">보통 (랭크업/필드)</button>
+          <button class="btn primary" onclick="startGame('어려움')">어려움 (랭크업+필드+상태이상)</button>
+        </div>
+        <div style="margin-top:20px">
+          <button class="btn" onclick="state.view='landing'; render();">뒤로가기</button>
+        </div>
+      </div>`;
+  }
+  else if (state.view === 'game') {
+    const qList = [
+      "더 스피드가 빠른 포켓몬은?", 
+      "물리공격력이 더 높은 포켓몬은?", 
+      "특수공격력이 더 높은 포켓몬은?", 
+      "물리내구(방어)가 더 높은 포켓몬은?",
+      "1번 기술 사용 시 상대를 먼저 기절시키는 포켓몬은?"
+    ];
+    const qIdx = state.qIdx;
+    
+    root.innerHTML = `
+      <div style="text-align:center"><b>[난이도: ${state.diff}]</b> ROUND ${state.round + 1} / 20 (점수: ${state.score})</div>
+      <div class="title-q">${qList[qIdx]}</div>
+      ${state.field ? `<div class="globalstate">현재 필드/날씨: ${state.field.n} (${state.field.e})</div>` : ''}
+      <div class="board">
+        ${renderCard(state.pA, 'A')}
+        <div class="vs">VS</div>
+        ${renderCard(state.pB, 'B')}
+      </div>
+      ${state.result ? `
+        <div class="banner ${state.result.ok ? 'ok':'no'}">${state.result.ok ? '🎉 정답!':'❌ 오답!'}</div>
+        <div class="explain">${state.result.msg}</div>
+        <div style="text-align:center"><button class="btn primary" onclick="nextRound()">다음 문제</button></div>
+      ` : ''}
+    `;
+  }
+  else if (state.view === 'result') {
+    root.innerHTML = `
+      <div class="landing">
+        <h1>게임 종료!</h1>
+        <h2>20문제 중 ${state.score}문제를 맞혔습니다!</h2>
+        <button class="btn primary" onclick="state.view='diff'; render();">난이도 선택으로 돌아가기</button>
+      </div>`;
+  }
+}
+
+function renderCard(unit, side) {
+  const p = unit.pkm;
+  const ev = unit.role.ev;
+  const rankStr = Object.entries(unit.rankUp).filter(([,v])=>v).map(([k,v])=>`${k}+${v}`).join(", ");
+  
+  return `
+    <div class="card" onclick="choose('${side}')">
+      <h2>${p.name} <span style="font-size:13px;color:#fff">(${p.types.join("/")})</span></h2>
+      <div class="mid">
+        <img src="${p.imageUrl}" alt="${p.name}">
+        <div>
+          <div class="stat"><b>HP</b><div class="bar ${ev.HP?'ev':''}"><i style="width:${(ev.HP/32)*100}%"></i></div><span>${ev.HP}</span></div>
+          <div class="stat"><b>공격</b><div class="bar ${ev.공격?'ev':''}"><i style="width:${(ev.공격/32)*100}%"></i></div><span>${ev.공격}</span></div>
+          <div class="stat"><b>방어</b><div class="bar ${ev.방어?'ev':''}"><i style="width:${(ev.방어/32)*100}%"></i></div><span>${ev.방어}</span></div>
+          <div class="stat"><b>특공</b><div class="bar ${ev.특공?'ev':''}"><i style="width:${(ev.특공/32)*100}%"></i></div><span>${ev.특공}</span></div>
+          <div class="stat"><b>특방</b><div class="bar ${ev.특방?'ev':''}"><i style="width:${(ev.특방/32)*100}%"></i></div><span>${ev.특방}</span></div>
+          <div class="stat"><b>스피드</b><div class="bar ${ev.스피드?'ev':''}"><i style="width:${(ev.스피드/32)*100}%"></i></div><span>${ev.스피드}</span></div>
+        </div>
+      </div>
+      <div class="info">
+        성격 <span>${unit.nature}</span> · 도구 <span>${unit.item.n}</span><br/>
+        ${rankStr ? `랭크업 <span>${rankStr}</span><br/>` : ''}
+        ${unit.status ? `상태이상 <span style="color:#ff6b6b">${unit.status.n}</span>` : ''}
+      </div>
+      <div class="moves">
+        ${unit.moves.slice(0,4).map((m,i)=>`<div class="mv ${i===0?'first':''}">${i===0?'① ':''}${m}</div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function startGame(diff) {
+  state.diff = diff;
+  state.round = 0;
+  state.score = 0;
+  state.view = 'game';
+  state.qPool = createQuestionPool(); // 질문 20개 황금비율 배열 생성
+  initRound();
+  render();
+}
+
+function choose(side) {
+  if (state.result) return;
+  const qIdx = state.qIdx;
+  let resA, resB;
+  let label = "";
+  let win = "A";
+  let msg = "";
+
+  if(qIdx < 4) {
+    if(qIdx === 0) { label = "스피드"; resA = getSpeed(state.pA); resB = getSpeed(state.pB); }
+    else if(qIdx === 1) { label = "물리공격"; resA = getAtk(state.pA, "공격"); resB = getAtk(state.pB, "공격"); }
+    else if(qIdx === 2) { label = "특수공격"; resA = getAtk(state.pA, "특공"); resB = getAtk(state.pB, "특공"); }
+    else { label = "물리내구(방어)"; resA = getDef(state.pA, "방어"); resB = getDef(state.pB, "방어"); }
+
+    if(state.field?.n === "트릭룸" && qIdx === 0) {
+      win = resA.val <= resB.val ? "A" : "B"; 
+    } else {
+      win = resA.val >= resB.val ? "A" : "B";
+    }
+    
+    msg = `【A: ${state.pA.pkm.name}】\n${resA.log.join("\n")}\n▶ 최종 ${label}: ${resA.val}\n\n` +
+          `【B: ${state.pB.pkm.name}】\n${resB.log.join("\n")}\n▶ 최종 ${label}: ${resB.val}\n\n` +
+          `정답: ${win==='A' ? state.pA.pkm.name : state.pB.pkm.name}`;
+          
+  } else {
+    const dA = damage(state.pA, state.pB);
+    const dB = damage(state.pB, state.pA);
+    const sA = getSpeed(state.pA).val;
+    const sB = getSpeed(state.pB).val;
+    const trick = state.field?.n === "트릭룸";
+    const aFirst = trick ? sA <= sB : sA >= sB;
+    
+    if(aFirst) {
+      win = dA.ko ? "A" : (dB.ko ? "B" : (dA.dmg >= dB.dmg ? "A" : "B"));
+    } else {
+      win = dB.ko ? "B" : (dA.ko ? "A" : (dB.dmg >= dA.dmg ? "B" : "A"));
+    }
+
+    msg = `공격 순서: ${aFirst ? "A 선공" : "B 선공"} (최종 스피드 A:${sA} vs B:${sB})\n\n` +
+          `【A(${state.pA.pkm.name}) 공격 결과】\n${dA.lines.join("\n")}\n\n` +
+          `【B(${state.pB.pkm.name}) 공격 결과】\n${dB.lines.join("\n")}\n\n` +
+          `정답: ${win==='A' ? state.pA.pkm.name : state.pB.pkm.name}`;
+  }
+
+  const ok = side === win;
+  if(ok) state.score++;
+
+  state.result = { ok, msg };
+  render();
+}
+
+function nextRound() {
+  if (state.round + 1 >= 20) {
+    state.view = 'result';
+  } else {
+    state.round++;
+    initRound();
+  }
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
