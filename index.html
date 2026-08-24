@@ -3,23 +3,39 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>포켓몬 밸런스 게임</title>
+<title>포챔스 배틀 밸런스 게임</title>
 <style>
   :root{
     --bg:#E2DED0; --frame:#3B6CB2; --navy:#1B2A4A;
     --gold:#F4B740; --orange:#F28C28; --cream:#FFF9EC;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;padding:0;background:var(--bg);font-family:system-ui,-apple-system,sans-serif;color:var(--navy)}
-  .app{max-width:1180px;min-height:90vh;margin:20px auto;padding:22px;border:3px solid var(--frame);border-radius:14px;background:var(--bg);display:flex;flex-direction:column}
+  html,body{margin:0;padding:0;background:var(--bg);font-family:system-ui,-apple-system,sans-serif;color:var(--navy);overflow-x:hidden;}
+  
+  /* 배경에 고정되어 모든 화면에서 보이는 데코레이션 아이템들 (총 8개) */
+  .decor{position:fixed;width:64px;height:64px;opacity:0.6;z-index:0;image-rendering:pixelated;pointer-events:none;}
+  /* 왼쪽 4개 */
+  .decor.d1{top:15%;left:5%;animation:float 3s ease-in-out infinite;}
+  .decor.d2{top:35%;left:8%;animation:float 4s ease-in-out infinite reverse;}
+  .decor.d3{bottom:35%;left:4%;animation:float 3.5s ease-in-out infinite 0.5s;}
+  .decor.d4{bottom:15%;left:7%;animation:float 2.5s ease-in-out infinite reverse 1s;}
+  /* 오른쪽 4개 */
+  .decor.d5{top:20%;right:6%;animation:float 3.2s ease-in-out infinite 0.2s;}
+  .decor.d6{top:40%;right:4%;animation:float 3.8s ease-in-out infinite reverse 0.8s;}
+  .decor.d7{bottom:30%;right:8%;animation:float 2.9s ease-in-out infinite 1.2s;}
+  .decor.d8{bottom:10%;right:5%;animation:float 3.6s ease-in-out infinite reverse 0.3s;}
+  @keyframes float{0%{transform:translateY(0px)}50%{transform:translateY(-15px)}100%{transform:translateY(0px)}}
+
+  .app{position:relative; z-index:2; max-width:1180px;min-height:90vh;margin:20px auto;padding:22px;border:3px solid var(--frame);border-radius:14px;background:var(--bg);display:flex;flex-direction:column;box-shadow: 0 10px 30px rgba(0,0,0,0.1);}
   h1{font-weight:900;margin:0 0 10px}
-  .btn{cursor:pointer;border:2px solid var(--navy);background:var(--cream);color:var(--navy);font-weight:800;padding:10px 18px;border-radius:10px;font-size:15px;margin:4px}
-  .btn:hover{background:#fff}
+  .btn{cursor:pointer;border:2px solid var(--navy);background:var(--cream);color:var(--navy);font-weight:800;padding:10px 18px;border-radius:10px;font-size:15px;margin:4px;transition:transform 0.1s}
+  .btn:hover{background:#fff;transform:translateY(-2px)}
   .btn.primary{background:var(--navy);color:#fff}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center}
   .title-q{font-weight:900;font-size:24px;text-align:center;color:var(--navy);margin:14px 0}
   .board{display:grid;grid-template-columns:1fr 80px 1fr;gap:14px;align-items:stretch;margin-top:10px}
-  .card{background:var(--navy);color:#fff;border-radius:22px;padding:14px;position:relative;cursor:pointer}
+  .card{background:var(--navy);color:#fff;border-radius:22px;padding:14px;position:relative;cursor:pointer;transition:transform 0.15s, box-shadow 0.15s}
+  .card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
   .card h2{margin:4px;font-size:20px;color:var(--gold);text-align:center}
   .mid{display:grid;grid-template-columns:140px 1fr;gap:10px;padding:8px}
   .mid img{width:140px;height:140px;object-fit:contain;background:#ffffff22;border-radius:14px}
@@ -36,21 +52,29 @@
   .banner{margin:16px auto;padding:14px;border-radius:14px;text-align:center;font-weight:900;font-size:20px}
   .banner.ok{background:#e7f6e7;color:#2c7d2c;border:2px solid #2c7d2c}
   .banner.no{background:#fdecec;color:#a02020;border:2px solid #a02020}
-  .explain{background:var(--cream);border:2px solid var(--navy);border-radius:14px;padding:14px;margin:10px 0;font-size:13px;white-space:pre-wrap;font-family:monospace}
-  .landing{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;text-align:center;padding:40px 20px}
+  .explain{background:var(--cream);border:2px solid var(--navy);border-radius:14px;padding:14px;margin:10px 0;font-size:13px;white-space:pre-wrap;font-family:monospace;line-height:1.6}
+  
+  .landing{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;text-align:center;padding:40px 20px;}
   .instr{max-width:800px;margin:auto;background:var(--cream);border:2px solid var(--navy);border-radius:14px;padding:22px;line-height:1.75;font-size:14.5px;text-align:left}
   .instr h3{margin:14px 0 6px;color:var(--navy)}
   .globalstate{max-width:820px;margin:10px auto 0;background:#fff5df;border:2px dashed var(--orange);border-radius:12px;padding:8px 12px;text-align:center;font-weight:800;color:var(--navy);font-size:13px}
-  @media (max-width: 800px){ .board{grid-template-columns:1fr} }
+  @media (max-width: 800px){ .board{grid-template-columns:1fr} .decor{display:none;} }
 </style>
 </head>
 <body>
+<!-- 앱 밖에서 배경 전체를 떠다니는 아이템 8개 -->
+<img class="decor d1" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-band.png">
+<img class="decor d2" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-specs.png">
+<img class="decor d3" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-scarf.png">
+<img class="decor d4" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png">
+<img class="decor d5" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/focus-sash.png">
+<img class="decor d6" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leftovers.png">
+<img class="decor d7" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png">
+<img class="decor d8" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png">
+
 <div class="app" id="app"></div>
 
 <script>
-/* ============================================================
-   DATA & DB
-   ============================================================ */
 const DEX = {
  "이상해꽃":3,"메가이상해꽃":10033,"리자몽":6,"메가리자몽X":10034,"메가리자몽Y":10035,
  "거북왕":9,"메가거북왕":10036,"독침붕":15,"메가독침붕":10090,
@@ -468,33 +492,180 @@ const NATURES = {
   "용감":{up:"공격",dn:"스피드"}, "냉정":{up:"특공",dn:"스피드"}
 };
 
-// 기술 속성 및 타입 판별
+// 기술 위력(BP) 및 세부 분류
 function moveInfo(name){
   const isStatus = /변화|저주|고백|회복|고속|성장|순풍|날려|방어|가루|춤|씨뿌리|광합성|맹독|자석파|도깨비|명상|하품|도발|스텔스|철벽|게으름|트릭|길동무|앵코르|멸망|날개쉬기|껍질|미러코트|눈초리|압정|나누기|대타|헛기침|악몽|모닝썬|미채|스핀|벌크|최면|디펜스|킹실드|희망|배북|아쿠아링|리플렉터|바톤|울부|애교|장막|카운터|안개|추억/.test(name);
   if(isStatus) return { bp: 0, type: "노말", cat: "변화", name }; 
   
-  const isPhysical = /펀치|킥|엄니|태클|물리|찌르|헤드|볼트|날개|드릴|폭포|잎|바위|이판사판|인파이트|신속|지진|크로스|유턴|탁쳐|메가혼|스톤|블라스트|기관총|바늘|속이다|기습|떨구기|다이브|클로|프레스|절이|치근|야습|역린|폭포오르기|아쿠아제트|은혜갚기|마하|안다리|무릎차기|브레이브|제비반환|애크러뱃|성스러운칼/.test(name);
+  let type = "노말", bp = 80;
+  const isPhysical = /펀치|킥|엄니|태클|물리|찌르|헤드|볼트|날개|드릴|폭포|잎|바위|이판사판|인파이트|신속|지진|크로스|유턴|탁쳐|메가혼|스톤|블라스트|기관총|바늘|속이다|기습|떨구기|다이브|클로|프레스|절이|치근|야습|역린|폭포오르기|아쿠아제트|은혜갚기|마하|안다리|무릎차기|브레이브|제비반환|애크러뱃|성스러운칼|마력|화살|래리어트|가위|개척|해머/.test(name);
   
-  let type = "노말";
-  if(/불|화염|플레어|오버히트|분화|대문자|송|원념/.test(name)) type = "불꽃";
-  else if(/물|파도|폭포|아쿠아|하이드로|열탕|거품|수리검|다이빙/.test(name)) type = "물";
-  else if(/풀|잎|씨|광합성|기가|우드|리프|에너지볼|플라워|개척/.test(name)) type = "풀";
-  else if(/전|볼트|10만|벼락|번개|와일드/.test(name)) type = "전기";
-  else if(/얼음|블리자드|냉동|눈보라|고드름|뭉치|프리즈|악셀/.test(name)) type = "얼음";
-  else if(/격투|파동탄|인파이트|드레인|엄청난|무릎|마하|안다리|바디프레스|성스러운/.test(name)) type = "격투";
-  else if(/독|헤도로|오물|더스트|클리어스모그/.test(name)) type = "독";
-  else if(/땅|지진|드릴|대지|진흙/.test(name)) type = "땅";
-  else if(/바위|돌|파워젬|스톤에지|블라스트|소금/.test(name)) type = "바위";
-  else if(/벌레|메가혼|유턴|야단법석|벌레먹음/.test(name)) type = "벌레";
-  else if(/고스트|섀도|야습|다이브|꿰매기/.test(name)) type = "고스트";
-  else if(/악|깨물|탁쳐|기습|파동|속임수|나이트|재앙/.test(name)) type = "악";
-  else if(/강철|아이언|헤비봄버|스마트혼|러스터|코멧|불릿/.test(name)) type = "강철";
-  else if(/페어리|샤인|문포스|플레이러프|플레임|치근거리기/.test(name)) type = "페어리";
-  else if(/드래곤|용|역린|애로/.test(name)) type = "드래곤";
-  else if(/에스퍼|사이코|신통력|사념|사념의/.test(name)) type = "에스퍼";
-  else if(/비행|공중|폭풍|에어|브레이브|제비|애크러뱃/.test(name)) type = "비행";
+  if(/10만마력/.test(name)){ type="땅"; bp=95; }
+  else if(/10만볼트/.test(name)){ type="전기"; bp=90; }
+  else if(/3연화살/.test(name)){ type="격투"; bp=90; }
+  else if(/DD래리어트/.test(name)){ type="악"; bp=85; }
+  else if(/G의힘/.test(name)){ type="풀"; bp=80; }
+  else if(/가위자르기|땅가르기|뿔드릴|절대영도/.test(name)){ type="노말"; bp=0; } // 일격기
+  else if(/개척하기/.test(name)){ type="풀"; bp=50; }
+  else if(/거대해머/.test(name)){ type="강철"; bp=160; }
+  else if(/고드름떨구기/.test(name)){ type="얼음"; bp=85; }
+  else if(/고드름침|바늘미사일|록블라스트|씨기관총/.test(name)){ type="얼음"; bp=25; }
+  else if(/고스트다이브/.test(name)){ type="고스트"; bp=90; }
+  else if(/골드러시/.test(name)){ type="강철"; bp=120; }
+  else if(/구멍파기/.test(name)){ type="땅"; bp=80; }
+  else if(/그림자꿰매기/.test(name)){ type="고스트"; bp=80; }
+  else if(/기가드레인/.test(name)){ type="풀"; bp=75; }
+  else if(/기습/.test(name)){ type="악"; bp=70; }
+  else if(/기합구슬/.test(name)){ type="격투"; bp=120; }
+  else if(/깜짝베기/.test(name)){ type="악"; bp=70; }
+  else if(/깨물어부수기/.test(name)){ type="악"; bp=80; }
+  else if(/깨트리기/.test(name)){ type="격투"; bp=75; }
+  else if(/나이트버스트/.test(name)){ type="악"; bp=85; }
+  else if(/난동부리기|메가톤킥|들이받기|은혜갚기/.test(name)){ type="노말"; bp=120; }
+  else if(/냉동빔/.test(name)){ type="얼음"; bp=90; }
+  else if(/냉동펀치|불꽃펀치|번개펀치/.test(name)){ type="얼음"; bp=75; }
+  else if(/누르기/.test(name)){ type="노말"; bp=85; }
+  else if(/눈보라/.test(name)){ type="얼음"; bp=110; }
+  else if(/눈사태/.test(name)){ type="얼음"; bp=60; }
+  else if(/니트로차지/.test(name)){ type="불꽃"; bp=50; }
+  else if(/달려들기|덤벼들기/.test(name)){ type="벌레"; bp=80; }
+  else if(/대지의힘/.test(name)){ type="땅"; bp=90; }
+  else if(/대폭발/.test(name)){ type="노말"; bp=250; }
+  else if(/더블윙/.test(name)){ type="비행"; bp=40; }
+  else if(/더스트슈트/.test(name)){ type="독"; bp=120; }
+  else if(/도각참/.test(name)){ type="악"; bp=85; }
+  else if(/독찌르기/.test(name)){ type="독"; bp=80; }
+  else if(/드래곤다이브/.test(name)){ type="드래곤"; bp=100; }
+  else if(/드래곤애로/.test(name)){ type="드래곤"; bp=50; }
+  else if(/드래곤테일/.test(name)){ type="드래곤"; bp=60; }
+  else if(/드레인키스/.test(name)){ type="페어리"; bp=50; }
+  else if(/드레인펀치/.test(name)){ type="격투"; bp=75; }
+  else if(/드릴라이너/.test(name)){ type="땅"; bp=80; }
+  else if(/떨어뜨리기/.test(name)){ type="바위"; bp=50; }
+  else if(/라이징볼트/.test(name)){ type="전기"; bp=70; }
+  else if(/러스터캐논/.test(name)){ type="강철"; bp=80; }
+  else if(/루미나콜리전/.test(name)){ type="에스퍼"; bp=80; }
+  else if(/리프블레이드/.test(name)){ type="풀"; bp=90; }
+  else if(/리프스톰/.test(name)){ type="풀"; bp=130; }
+  else if(/마지막일침/.test(name)){ type="벌레"; bp=50; }
+  else if(/마하펀치|불릿펀치|진공파|아쿠아제트|야습|얼음뭉치|전광석화|액셀록/.test(name)){ type="격투"; bp=40; }
+  else if(/만나자마자/.test(name)){ type="벌레"; bp=90; }
+  else if(/매지컬샤인/.test(name)){ type="페어리"; bp=80; }
+  else if(/매지컬플레임/.test(name)){ type="불꽃"; bp=75; }
+  else if(/머드샷/.test(name)){ type="땅"; bp=55; }
+  else if(/메가혼/.test(name)){ type="벌레"; bp=120; }
+  else if(/무릎차기/.test(name)){ type="격투"; bp=130; }
+  else if(/문포스/.test(name)){ type="페어리"; bp=95; }
+  else if(/물거품아리아/.test(name)){ type="물"; bp=90; }
+  else if(/물기/.test(name)){ type="악"; bp=60; }
+  else if(/물의파동/.test(name)){ type="물"; bp=60; }
+  else if(/바디프레스/.test(name)){ type="격투"; bp=80; }
+  else if(/바크아웃/.test(name)){ type="악"; bp=55; }
+  else if(/방전/.test(name)){ type="전기"; bp=80; }
+  else if(/백귀야행/.test(name)){ type="고스트"; bp=60; }
+  else if(/번개/.test(name)){ type="전기"; bp=110; }
+  else if(/벌레의야단법석/.test(name)){ type="벌레"; bp=90; }
+  else if(/병상첨병/.test(name)){ type="고스트"; bp=65; }
+  else if(/보복|앙갚음/.test(name)){ type="악"; bp=50; }
+  else if(/볼트체인지|유턴/.test(name)){ type="전기"; bp=70; }
+  else if(/볼트태클|웨이브태클|플레어드라이브|브레이브버드|이판사판태클/.test(name)){ type="전기"; bp=120; }
+  else if(/부리캐논/.test(name)){ type="비행"; bp=100; }
+  else if(/분연/.test(name)){ type="불꽃"; bp=80; }
+  else if(/분화|해수스파우팅|암석포|양날박치기|파괴광선/.test(name)){ type="불꽃"; bp=150; }
+  else if(/불꽃엄니|얼음엄니/.test(name)){ type="불꽃"; bp=65; }
+  else if(/불대문자/.test(name)){ type="불꽃"; bp=110; }
+  else if(/블레이즈킥/.test(name)){ type="불꽃"; bp=85; }
+  else if(/비검천중파/.test(name)){ type="악"; bp=65; }
+  else if(/빙산바람|얼어붙은바람/.test(name)){ type="얼음"; bp=55; }
+  else if(/사과산/.test(name)){ type="풀"; bp=80; }
+  else if(/사념의박치기/.test(name)){ type="에스퍼"; bp=80; }
+  else if(/사이코쇼크/.test(name)){ type="에스퍼"; bp=80; }
+  else if(/사이코키네시스/.test(name)){ type="에스퍼"; bp=90; }
+  else if(/섀도볼/.test(name)){ type="고스트"; bp=80; }
+  else if(/섀도클로/.test(name)){ type="고스트"; bp=70; }
+  else if(/성스러운칼/.test(name)){ type="격투"; bp=90; }
+  else if(/셸블레이드/.test(name)){ type="물"; bp=75; }
+  else if(/셸암즈/.test(name)){ type="독"; bp=90; }
+  else if(/소금절이/.test(name)){ type="바위"; bp=40; }
+  else if(/소울크래시/.test(name)){ type="페어리"; bp=75; }
+  else if(/속이기/.test(name)){ type="노말"; bp=40; }
+  else if(/속임수/.test(name)){ type="악"; bp=95; }
+  else if(/솔라빔|솔라블레이드/.test(name)){ type="풀"; bp=120; }
+  else if(/스마트혼/.test(name)){ type="강철"; bp=70; }
+  else if(/스톤샤워/.test(name)){ type="바위"; bp=75; }
+  else if(/스톤에지/.test(name)){ type="바위"; bp=100; }
+  else if(/시저크로스/.test(name)){ type="벌레"; bp=80; }
+  else if(/신속/.test(name)){ type="노말"; bp=80; }
+  else if(/신통력/.test(name)){ type="에스퍼"; bp=80; }
+  else if(/썬더다이브/.test(name)){ type="전기"; bp=100; }
+  else if(/아머캐논/.test(name)){ type="불꽃"; bp=120; }
+  else if(/아이언테일/.test(name)){ type="강철"; bp=100; }
+  else if(/아이언헤드/.test(name)){ type="강철"; bp=80; }
+  else if(/아쿠아브레이크/.test(name)){ type="물"; bp=85; }
+  else if(/아쿠아스텝/.test(name)){ type="물"; bp=80; }
+  else if(/아쿠아테일/.test(name)){ type="물"; bp=90; }
+  else if(/악의파동/.test(name)){ type="악"; bp=80; }
+  else if(/암석봉인/.test(name)){ type="바위"; bp=60; }
+  else if(/암해머/.test(name)){ type="격투"; bp=100; }
+  else if(/애시드봄/.test(name)){ type="독"; bp=40; }
+  else if(/애크러뱃/.test(name)){ type="비행"; bp=55; }
+  else if(/얼음숨결/.test(name)){ type="얼음"; bp=60; }
+  else if(/엄청난힘/.test(name)){ type="격투"; bp=120; }
+  else if(/에너지볼/.test(name)){ type="풀"; bp=90; }
+  else if(/에어슬래시/.test(name)){ type="비행"; bp=75; }
+  else if(/역린/.test(name)){ type="드래곤"; bp=120; }
+  else if(/열탕/.test(name)){ type="물"; bp=80; }
+  else if(/열풍/.test(name)){ type="불꽃"; bp=100; }
+  else if(/오물웨이브/.test(name)){ type="독"; bp=95; }
+  else if(/오물폭탄/.test(name)){ type="독"; bp=90; }
+  else if(/오버히트|용성군/.test(name)){ type="불꽃"; bp=130; }
+  else if(/용의파동/.test(name)){ type="드래곤"; bp=85; }
+  else if(/우드해머/.test(name)){ type="풀"; bp=120; }
+  else if(/원념의칼/.test(name)){ type="불꽃"; bp=90; }
+  else if(/인파이트/.test(name)){ type="격투"; bp=120; }
+  else if(/일렉트로빔/.test(name)){ type="전기"; bp=130; }
+  else if(/지진/.test(name)){ type="땅"; bp=100; }
+  else if(/진공파/.test(name)){ type="격투"; bp=40; }
+  else if(/치근거리기/.test(name)){ type="페어리"; bp=90; }
+  else if(/코멧펀치/.test(name)){ type="강철"; bp=90; }
+  else if(/탁쳐서떨구기/.test(name)){ type="악"; bp=65; }
+  else if(/트릭플라워/.test(name)){ type="풀"; bp=70; }
+  else if(/트리플악셀/.test(name)){ type="얼음"; bp=120; }
+  else if(/파도타기/.test(name)){ type="물"; bp=90; }
+  else if(/파동탄/.test(name)){ type="격투"; bp=80; }
+  else if(/파워젬/.test(name)){ type="바위"; bp=80; }
+  else if(/파워휩/.test(name)){ type="풀"; bp=120; }
+  else if(/폭발펀치/.test(name)){ type="격투"; bp=100; }
+  else if(/폭음파/.test(name)){ type="노말"; bp=140; }
+  else if(/폭포오르기/.test(name)){ type="물"; bp=80; }
+  else if(/폭풍/.test(name)){ type="비행"; bp=110; }
+  else if(/폴터가이스트/.test(name)){ type="고스트"; bp=110; }
+  else if(/프리즈드라이/.test(name)){ type="얼음"; bp=70; }
+  else if(/플레어송/.test(name)){ type="불꽃"; bp=80; }
+  else if(/하이드로펌프/.test(name)){ type="물"; bp=110; }
+  else if(/하이퍼보이스/.test(name)){ type="노말"; bp=90; }
+  else if(/화염방사/.test(name)){ type="불꽃"; bp=90; }
+  else {
+    if(/불|화염|플레어|오버히트|분화|대문자|송|원념/.test(name)) type = "불꽃";
+    else if(/물|파도|폭포|아쿠아|하이드로|열탕|거품|수리검|다이빙/.test(name)) type = "물";
+    else if(/풀|잎|씨|광합성|기가|우드|리프|에너지볼|플라워|개척/.test(name)) type = "풀";
+    else if(/전|볼트|10만|벼락|번개|와일드/.test(name)) type = "전기";
+    else if(/얼음|블리자드|냉동|눈보라|고드름|뭉치|프리즈|악셀/.test(name)) type = "얼음";
+    else if(/격투|파동탄|인파이트|드레인|엄청난|무릎|마하|안다리|바디프레스|성스러운/.test(name)) type = "격투";
+    else if(/독|헤도로|오물|더스트|클리어스모그/.test(name)) type = "독";
+    else if(/땅|지진|드릴|대지|진흙/.test(name)) type = "땅";
+    else if(/바위|돌|파워젬|스톤에지|블라스트|소금/.test(name)) type = "바위";
+    else if(/벌레|메가혼|유턴|야단법석|벌레먹음/.test(name)) type = "벌레";
+    else if(/고스트|섀도|야습|다이브|꿰매기/.test(name)) type = "고스트";
+    else if(/악|깨물|탁쳐|기습|파동|속임수|나이트|재앙/.test(name)) type = "악";
+    else if(/강철|아이언|헤비봄버|스마트혼|러스터|코멧|불릿/.test(name)) type = "강철";
+    else if(/페어리|샤인|문포스|플레이러프|플레임|치근거리기/.test(name)) type = "페어리";
+    else if(/드래곤|용|역린|애로/.test(name)) type = "드래곤";
+    else if(/에스퍼|사이코|신통력|사념|사념의/.test(name)) type = "에스퍼";
+    else if(/비행|공중|폭풍|에어|브레이브|제비|애크러뱃/.test(name)) type = "비행";
+  }
 
-  return { bp: 80, type, cat: isPhysical ? "물리" : "특수", name };
+  return { bp: bp, type: type, cat: isPhysical ? "물리" : "특수", name: name };
 }
 
 function typeEff(mvType, defTypes) {
@@ -557,9 +728,8 @@ function rnd(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 function rInt(a,b){ return a + Math.floor(Math.random()*(b-a+1)); }
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
-// 20라운드를 위한 균등한 질문 풀 생성 (연속 3번 출제 방지)
 function createQuestionPool() {
-  let pool = [0,0,0,0, 1,1,1,1, 2,2,2,2, 3,3,3,3, 4,4,4,4];
+  let pool = [0,0,0,0, 1,1,1,1, 2,2,2,2, 3,3,3,3,3, 4,4,4]; 
   let valid = false;
   while(!valid) {
     pool = shuffle(pool);
@@ -622,10 +792,20 @@ function buildUnit(pkm, difficulty){
   const role = classify(pkm);
   const nature = rnd(role.natures);
   const stats = calcStats(pkm.zeroEvStats, role.ev, nature);
-  const item = rnd(ITEMS);
   
+  let validItems = [...ITEMS];
+  if(role.role.includes("물리")) validItems = validItems.filter(i => i.n !== "구애안경");
+  else if(role.role.includes("특수")) validItems = validItems.filter(i => i.n !== "구애머리띠");
+  const item = rnd(validItems);
+  
+  const prefCat = role.role.includes("물리") ? "물리" : "특수";
   const shuffledMoves = shuffle([...pkm.moves]);
-  const dmgFirst = shuffledMoves.find(n => moveInfo(n).cat !== "변화") || shuffledMoves[0];
+  
+  const dmgFirst = shuffledMoves.find(n => moveInfo(n).cat === prefCat && pkm.types.includes(moveInfo(n).type))
+                || shuffledMoves.find(n => moveInfo(n).cat === prefCat)
+                || shuffledMoves.find(n => moveInfo(n).cat !== "변화") 
+                || shuffledMoves[0];
+                
   const rest = shuffledMoves.filter(n => n !== dmgFirst).slice(0, 3);
   const selectedMoves = [dmgFirst, ...rest];
   
@@ -657,13 +837,11 @@ function buildUnit(pkm, difficulty){
 }
 
 function initRound() {
-  // 이번 라운드에 출제될 지정된 질문 
   state.qIdx = state.qPool[state.round];
   
   let a, b, pA, pB;
   let validPair = false;
 
-  // 선택된 질문에 완벽히 들어맞는 포켓몬 쌍이 뽑힐 때까지 무한 반복 (가챠)
   while(!validPair) {
     a = rnd(POKEDEX);
     b = rnd(POKEDEX);
@@ -672,24 +850,18 @@ function initRound() {
     pA = buildUnit(a, state.diff);
     pB = buildUnit(b, state.diff);
     
-    // 역할군이 다르면 탈락 (어태커 vs 막이형 금지)
     if(pA.role.isAttacker !== pB.role.isAttacker) continue;
 
     let evA = pA.role.ev;
     let evB = pB.role.ev;
 
-    // 0: 스피드 (둘 다 스피드 노력치 32여야 통과)
     if(state.qIdx === 0 && (evA.스피드 !== 32 || evB.스피드 !== 32)) continue;
-    // 1: 물리공격 (둘 다 공격 노력치 32여야 통과)
     if(state.qIdx === 1 && (evA.공격 !== 32 || evB.공격 !== 32)) continue;
-    // 2: 특수공격 (둘 다 특공 노력치 32여야 통과)
     if(state.qIdx === 2 && (evA.특공 !== 32 || evB.특공 !== 32)) continue;
-    // 3: 방어 (둘 다 방어 노력치 32여야 통과)
     if(state.qIdx === 3 && (evA.방어 !== 32 || evB.방어 !== 32)) continue;
-    // 4: 1번 기술 기절 (5번 질문은 어태커끼리 맞붙도록)
     if(state.qIdx === 4 && (!pA.role.isAttacker || !pB.role.isAttacker)) continue;
 
-    validPair = true; // 모든 조건을 통과했으므로 이 쌍을 채택
+    validPair = true;
   }
 
   state.pA = pA;
@@ -762,28 +934,42 @@ function getDef(unit, kind = "방어"){
   return { val: v, log };
 }
 
-function damage(attacker, defender) {
+function damage(attacker) {
   const mv = moveInfo(attacker.moves[0]);
   let lines = [`【사용 기술】 ${mv.name} (${mv.type}/${mv.cat}, 위력 ${mv.bp})`];
-  if(mv.bp === 0 || mv.cat === "변화") return { ko: false, dmg: 0, lines: [...lines, "변화기 → 데미지 0"] };
+  if(mv.bp === 0 || mv.cat === "변화") return { decision: 0, lines: [...lines, "▶ 최종 결정력: 0 (변화기)"] };
 
   const off = getAtk(attacker, mv.cat === "물리" ? "공격" : "특공");
-  const def = getDef(defender, mv.cat === "물리" ? "방어" : "특방");
   
-  let dmg = Math.floor(Math.floor(Math.floor(2*50/5+2) * mv.bp * off.val / def.val)/50) + 2;
-
-  if(attacker.pkm.types.includes(mv.type)){ dmg = Math.floor(dmg*1.5); lines.push(`자속 보정 ×1.5 → ${dmg}`); }
-  const eff = typeEff(mv.type, defender.pkm.types);
-  if(eff !== 1){ dmg = Math.floor(dmg*eff); lines.push(`타입 상성 ×${eff} → ${dmg}`); }
-  if(mv.cat === "물리" && attacker.status?.n === "화상"){ dmg = Math.floor(dmg*0.5); lines.push(`화상 패널티 ×0.5 → ${dmg}`); }
-  if(attacker.item.n === "생명의구슬"){ dmg = Math.floor(dmg*1.3); lines.push(`생명의구슬 ×1.3 → ${dmg}`); }
-
-  const minDmg = Math.floor(dmg * 0.85);
-  const hp = defender.stats[0];
-  const ko = minDmg >= hp;
+  let power = mv.bp;
+  let stab = attacker.pkm.types.includes(mv.type) ? 1.5 : 1;
+  let itemMod = 1;
+  if (attacker.item.n === "구애머리띠" && mv.cat === "물리") itemMod = 1.5;
+  if (attacker.item.n === "구애안경" && mv.cat === "특수") itemMod = 1.5;
+  if (attacker.item.n === "생명의구슬") itemMod = 1.3;
   
-  lines.push(`예상 데미지: ${minDmg}~${dmg} / 상대방 HP: ${hp}`);
-  return { ko, dmg, lines };
+  let statusMod = (mv.cat === "물리" && attacker.status?.n === "화상") ? 0.5 : 1;
+  
+  let envMod = 1.0;
+  if (state.field) {
+     if(state.field.n === "쾌청" && mv.type === "불꽃") envMod = 1.5;
+     if(state.field.n === "쾌청" && mv.type === "물") envMod = 0.5;
+     if(state.field.n === "비" && mv.type === "물") envMod = 1.5;
+     if(state.field.n === "비" && mv.type === "불꽃") envMod = 0.5;
+     if(state.field.n === "일렉트릭필드" && mv.type === "전기") envMod = 1.3;
+     if(state.field.n === "글래스필드" && mv.type === "풀") envMod = 1.3;
+     if(state.field.n === "사이코필드" && mv.type === "에스퍼") envMod = 1.3;
+     if(state.field.n === "미스트필드" && mv.type === "드래곤") envMod = 0.5;
+  }
+
+  let etcMod = itemMod * statusMod * envMod;
+  let decisionPower = Math.floor(power * off.val * stab * etcMod);
+  
+  let formattedEtcMod = Number.isInteger(etcMod) ? etcMod : parseFloat(etcMod.toFixed(2));
+  
+  lines.push(`▶ 최종 결정력: ${decisionPower} (위력 ${power} × 실수치 ${off.val} × 자속 ${stab} × 도구/기타 ${formattedEtcMod})`);
+  
+  return { decision: decisionPower, lines };
 }
 
 /* ============================================================
@@ -795,11 +981,13 @@ function render() {
   if (state.view === 'landing') {
     root.innerHTML = `
       <div class="landing">
-        <h1>포켓몬 밸런스 게임</h1>
-        <p>노력치와 성격이 반영된 최종 실수치와 전투 데미지를 계산하여 더 우수한 포켓몬을 맞혀보세요!</p>
-        <div class="row">
-          <button class="btn primary" onclick="state.view='diff'; render();">난이도 선택</button>
-          <button class="btn" onclick="state.view='help'; render();">게임 설명</button>
+        <div class="landing-content">
+          <h1 style="font-size:38px; color:var(--navy); margin-bottom:10px;">포챔스 배틀 밸런스 게임</h1>
+          <p style="font-size:16px; font-weight:600; color:#444; margin-bottom: 25px;">어태커 간의 진검승부! 모든 변수가 고려된 결정력을 겨뤄보세요.</p>
+          <div class="row">
+            <button class="btn primary" style="font-size:18px; padding:12px 24px;" onclick="state.view='diff'; render();">난이도 선택</button>
+            <button class="btn" style="font-size:18px; padding:12px 24px;" onclick="state.view='help'; render();">게임 설명</button>
+          </div>
         </div>
       </div>`;
   } 
@@ -813,8 +1001,8 @@ function render() {
         2) 물리공격력이 더 높은 포켓몬은?<br/>
         3) 특수공격력이 더 높은 포켓몬은?<br/>
         4) 물리내구(방어)가 더 높은 포켓몬은?<br/>
-        5) 1번 기술 사용 시 상대를 먼저 기절시키는 포켓몬은?<br>
-        <i>* 포켓몬에 공통으로 투자된 노력치(EV)에 대해서만 질문이 출제됩니다!</i>
+        5) 결정력이 더 높은 포켓몬은?<br>
+        <i>* 각 라운드의 질문은 사전에 균등하게 분배되며, 질문에 맞는 포켓몬만 등장합니다!</i>
         <h3>⚔️ 난이도 설정</h3>
         <b>쉬움</b>: 기본 실수치 + 성격 + 도구<br/>
         <b>보통</b>: 랭크업 또는 필드 효과 추가<br/>
@@ -844,7 +1032,7 @@ function render() {
       "물리공격력이 더 높은 포켓몬은?", 
       "특수공격력이 더 높은 포켓몬은?", 
       "물리내구(방어)가 더 높은 포켓몬은?",
-      "1번 기술 사용 시 상대를 먼저 기절시키는 포켓몬은?"
+      "결정력이 더 높은 포켓몬은?"
     ];
     const qIdx = state.qIdx;
     
@@ -865,11 +1053,35 @@ function render() {
     `;
   }
   else if (state.view === 'result') {
+    let ballName = "";
+    let ballImg = "";
+    let message = "";
+    if (state.score <= 5) {
+      ballName = "몬스터볼";
+      ballImg = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png";
+      message = "포켓몬 배틀의 기초를 배워가는 단계네요!";
+    } else if (state.score <= 10) {
+      ballName = "슈퍼볼";
+      ballImg = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png";
+      message = "조금만 더 노력하면 실전 배틀도 문제없어요!";
+    } else if (state.score <= 15) {
+      ballName = "하이퍼볼";
+      ballImg = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png";
+      message = "훌륭합니다! 실전 배틀의 감각이 뛰어나시네요!";
+    } else {
+      ballName = "마스터볼";
+      ballImg = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png";
+      message = "완벽합니다! 당신은 진정한 포켓몬 마스터!";
+    }
+
     root.innerHTML = `
       <div class="landing">
-        <h1>게임 종료!</h1>
-        <h2>20문제 중 ${state.score}문제를 맞혔습니다!</h2>
-        <button class="btn primary" onclick="state.view='diff'; render();">난이도 선택으로 돌아가기</button>
+        <h1 style="font-size:36px; margin-bottom: 20px;">게임 종료!</h1>
+        <img src="${ballImg}" alt="${ballName}" style="width:100px; height:100px; image-rendering: pixelated;">
+        <h2 style="font-size:28px; margin: 10px 0;">당신의 랭크: <span style="color:var(--orange)">[${ballName}]</span></h2>
+        <p style="font-size:18px; font-weight:700; margin-bottom: 5px;">20문제 중 ${state.score}문제를 맞혔습니다!</p>
+        <p style="font-size:15px; color:#555; margin-bottom: 30px;">${message}</p>
+        <button class="btn primary" onclick="state.view='diff'; render();">다시 도전하기 (난이도 선택)</button>
       </div>`;
   }
 }
@@ -899,7 +1111,7 @@ function renderCard(unit, side) {
         ${unit.status ? `상태이상 <span style="color:#ff6b6b">${unit.status.n}</span>` : ''}
       </div>
       <div class="moves">
-        ${unit.moves.slice(0,4).map((m,i)=>`<div class="mv ${i===0?'first':''}">${i===0?'① ':''}${m}</div>`).join('')}
+        ${unit.moves.slice(0,4).map((m,i)=>`<div class="mv ${i===0?'first':''}"><span style="color:var(--gold)">${i===0?'① ':''}</span>${m}</div>`).join('')}
       </div>
     </div>`;
 }
@@ -909,7 +1121,7 @@ function startGame(diff) {
   state.round = 0;
   state.score = 0;
   state.view = 'game';
-  state.qPool = createQuestionPool(); // 질문 20개 황금비율 배열 생성
+  state.qPool = createQuestionPool();
   initRound();
   render();
 }
@@ -939,22 +1151,13 @@ function choose(side) {
           `정답: ${win==='A' ? state.pA.pkm.name : state.pB.pkm.name}`;
           
   } else {
-    const dA = damage(state.pA, state.pB);
-    const dB = damage(state.pB, state.pA);
-    const sA = getSpeed(state.pA).val;
-    const sB = getSpeed(state.pB).val;
-    const trick = state.field?.n === "트릭룸";
-    const aFirst = trick ? sA <= sB : sA >= sB;
+    const dA = damage(state.pA);
+    const dB = damage(state.pB);
     
-    if(aFirst) {
-      win = dA.ko ? "A" : (dB.ko ? "B" : (dA.dmg >= dB.dmg ? "A" : "B"));
-    } else {
-      win = dB.ko ? "B" : (dA.ko ? "A" : (dB.dmg >= dA.dmg ? "B" : "A"));
-    }
+    win = dA.decision >= dB.decision ? "A" : "B";
 
-    msg = `공격 순서: ${aFirst ? "A 선공" : "B 선공"} (최종 스피드 A:${sA} vs B:${sB})\n\n` +
-          `【A(${state.pA.pkm.name}) 공격 결과】\n${dA.lines.join("\n")}\n\n` +
-          `【B(${state.pB.pkm.name}) 공격 결과】\n${dB.lines.join("\n")}\n\n` +
+    msg = `【A(${state.pA.pkm.name}) 결정력 및 결과】\n${dA.lines.join("\n")}\n\n` +
+          `【B(${state.pB.pkm.name}) 결정력 및 결과】\n${dB.lines.join("\n")}\n\n` +
           `정답: ${win==='A' ? state.pA.pkm.name : state.pB.pkm.name}`;
   }
 
